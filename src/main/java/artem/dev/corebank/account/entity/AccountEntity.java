@@ -1,5 +1,6 @@
 package artem.dev.corebank.account.entity;
 
+import artem.dev.corebank.common.exception.BusinessRuleException;
 import artem.dev.corebank.customer.entity.CustomerEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -68,6 +69,56 @@ public class AccountEntity {
         this.status = AccountStatus.ACTIVE;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    AccountEntity(
+            UUID id,
+            String accountNumber,
+            CustomerEntity customer,
+            Currency currency,
+            BigDecimal balance,
+            AccountStatus status,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this.id = id;
+        this.accountNumber = accountNumber;
+        this.customer = customer;
+        this.currency = currency;
+        this.balance = balance;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public void deposit(BigDecimal amount, Instant updatedAt) {
+        validateMoneyOperation(amount);
+        this.balance = this.balance.add(amount);
+        this.updatedAt = updatedAt;
+    }
+
+    public void withdraw(BigDecimal amount, Instant updatedAt) {
+        validateMoneyOperation(amount);
+        if (balance.compareTo(amount) < 0) {
+            throw new BusinessRuleException("INSUFFICIENT_FUNDS", "Insufficient funds on the account");
+        }
+        this.balance = this.balance.subtract(amount);
+        this.updatedAt = updatedAt;
+    }
+
+    private void validateMoneyOperation(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleException("INVALID_AMOUNT", "Amount must be greater than zero");
+        }
+        if (amount.scale() > 2) {
+            throw new BusinessRuleException(
+                    "INVALID_AMOUNT_SCALE",
+                    "Amount must have at most two decimal places"
+            );
+        }
+        if (status != AccountStatus.ACTIVE) {
+            throw new BusinessRuleException("ACCOUNT_NOT_ACTIVE", "Account must be active");
+        }
     }
 
     public UUID getId() {

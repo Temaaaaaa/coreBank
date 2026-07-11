@@ -102,6 +102,27 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessRule(
+            BusinessRuleException exception,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = isConflict(exception.getErrorCode())
+                ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+        return buildResponse(
+                status,
+                request,
+                exception.getErrorCode(),
+                exception.getMessage(),
+                List.of()
+        );
+    }
+
+    private boolean isConflict(String errorCode) {
+        return "ACCOUNT_NOT_ACTIVE".equals(errorCode) || "INSUFFICIENT_FUNDS".equals(errorCode);
+    }
+
     @ExceptionHandler(InternalOperationException.class)
     public ResponseEntity<ApiErrorResponse> handleInternalOperation(
             InternalOperationException exception,
