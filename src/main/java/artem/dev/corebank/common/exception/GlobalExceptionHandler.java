@@ -102,6 +102,26 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InternalOperationException.class)
+    public ResponseEntity<ApiErrorResponse> handleInternalOperation(
+            InternalOperationException exception,
+            HttpServletRequest request
+    ) {
+        LOGGER.error(
+                "Internal operation failed while processing {} {}: {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                exception.getErrorCode()
+        );
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request,
+                exception.getErrorCode(),
+                exception.getMessage(),
+                List.of()
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(
             Exception exception,
