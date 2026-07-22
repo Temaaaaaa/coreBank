@@ -2,6 +2,7 @@ package artem.dev.corebank.transaction.controller;
 
 import artem.dev.corebank.transaction.dto.DepositRequest;
 import artem.dev.corebank.transaction.dto.TransactionResponse;
+import artem.dev.corebank.transaction.dto.TransferRequest;
 import artem.dev.corebank.transaction.dto.WithdrawalRequest;
 import artem.dev.corebank.transaction.service.MoneyOperationService;
 import jakarta.validation.Valid;
@@ -39,6 +40,13 @@ public class MoneyOperationController {
             @Valid @RequestBody WithdrawalRequest request
     ) {
         TransactionResponse response = moneyOperationService.withdraw(accountId, request);
+        URI location = URI.create("/api/v1/transactions/" + response.id());
+        return ResponseEntity.created(location).body(response);
+    }
+
+    @PostMapping("/api/v1/transfers")
+    public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request) {
+        TransactionResponse response = moneyOperationService.transfer(request);
         URI location = URI.create("/api/v1/transactions/" + response.id());
         return ResponseEntity.created(location).body(response);
     }

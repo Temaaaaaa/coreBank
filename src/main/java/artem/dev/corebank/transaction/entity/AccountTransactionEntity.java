@@ -117,6 +117,38 @@ public class AccountTransactionEntity {
         );
     }
 
+    public static AccountTransactionEntity transfer(
+            UUID id,
+            BigDecimal amount,
+            AccountEntity sourceAccount,
+            AccountEntity targetAccount,
+            String description,
+            Instant createdAt
+    ) {
+        Objects.requireNonNull(sourceAccount, "sourceAccount must not be null");
+        Objects.requireNonNull(targetAccount, "targetAccount must not be null");
+        Objects.requireNonNull(createdAt, "createdAt must not be null");
+        if (sourceAccount.getId().equals(targetAccount.getId())) {
+            throw new IllegalArgumentException("sourceAccount and targetAccount must be different");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("amount must be greater than zero");
+        }
+        if (sourceAccount.getCurrency() != targetAccount.getCurrency()) {
+            throw new IllegalArgumentException("sourceAccount and targetAccount currencies must match");
+        }
+        return new AccountTransactionEntity(
+                id,
+                TransactionType.TRANSFER,
+                amount,
+                sourceAccount.getCurrency(),
+                sourceAccount,
+                targetAccount,
+                description,
+                createdAt
+        );
+    }
+
     public UUID getId() {
         return id;
     }

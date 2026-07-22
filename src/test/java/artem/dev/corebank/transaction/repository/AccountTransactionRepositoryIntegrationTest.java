@@ -110,6 +110,94 @@ class AccountTransactionRepositoryIntegrationTest {
     }
 
     @Test
+    void savesTransferWithExpectedAccountsAmountCurrencyAndTimestamp() {
+        AccountEntity source = saveAccount("12345678901234567881");
+        AccountEntity target = saveAccount("12345678901234567882");
+        AccountTransactionEntity transaction = AccountTransactionEntity.transfer(
+                UUID.randomUUID(),
+                new BigDecimal("500.00"),
+                source,
+                target,
+                "Transfer between accounts",
+                FIXED_TIME
+        );
+
+        transactionRepository.saveAndFlush(transaction);
+        entityManager.clear();
+        AccountTransactionEntity loaded = transactionRepository.findById(transaction.getId()).orElseThrow();
+
+        assertThat(loaded.getType()).isEqualTo(TransactionType.TRANSFER);
+        assertThat(loaded.getSourceAccount().getId()).isEqualTo(source.getId());
+        assertThat(loaded.getTargetAccount().getId()).isEqualTo(target.getId());
+        assertThat(loaded.getAmount()).isEqualTo(new BigDecimal("500.00"));
+        assertThat(loaded.getAmount().scale()).isEqualTo(2);
+        assertThat(loaded.getCurrency()).isEqualTo(Currency.RUB);
+        assertThat(loaded.getDescription()).isEqualTo("Transfer between accounts");
+        assertThat(loaded.getCreatedAt()).isEqualTo(FIXED_TIME);
+    }
+
+    @Test
+    void databaseRejectsTransferWithoutSourceAccount() {
+        AccountEntity target = saveAccount("12345678901234567883");
+        assertSqlState("23514", () -> insertRaw(
+                "TRANSFER",
+                new BigDecimal("10.00"),
+                "RUB",
+                null,
+                target.getId()
+        ));
+    }
+
+    @Test
+    void databaseRejectsTransferWithoutTargetAccount() {
+        AccountEntity source = saveAccount("12345678901234567884");
+        assertSqlState("23514", () -> insertRaw(
+                "TRANSFER",
+                new BigDecimal("10.00"),
+                "RUB",
+                source.getId(),
+                null
+        ));
+    }
+
+    @Test
+    void databaseEnforcesTransferSourceForeignKey() {
+        AccountEntity target = saveAccount("12345678901234567885");
+        assertSqlState("23503", () -> insertRaw(
+                "TRANSFER",
+                new BigDecimal("10.00"),
+                "RUB",
+                UUID.randomUUID(),
+                target.getId()
+        ));
+    }
+
+    @Test
+    void databaseEnforcesTransferTargetForeignKey() {
+        AccountEntity source = saveAccount("12345678901234567886");
+        assertSqlState("23503", () -> insertRaw(
+                "TRANSFER",
+                new BigDecimal("10.00"),
+                "RUB",
+                source.getId(),
+                UUID.randomUUID()
+        ));
+    }
+
+    @Test
+    void databaseRejectsNegativeTransferAmount() {
+        AccountEntity source = saveAccount("12345678901234567887");
+        AccountEntity target = saveAccount("12345678901234567888");
+        assertSqlState("23514", () -> insertRaw(
+                "TRANSFER",
+                new BigDecimal("-0.01"),
+                "RUB",
+                source.getId(),
+                target.getId()
+        ));
+    }
+
+    @Test
     void databaseEnforcesSourceAccountForeignKey() {
         assertSqlState("23503", () -> insertRaw(
                 "WITHDRAWAL",

@@ -3,8 +3,8 @@
 CoreBank Lite is an educational banking REST API intended to demonstrate clear,
 production-style backend development suitable for a Junior Java developer portfolio.
 
-The current version supports customers, bank accounts, deposits, and withdrawals. Transfers,
-transaction history, and account status changes have not been implemented yet.
+The current version supports customers, bank accounts, deposits, withdrawals, and transfers.
+Transaction history and account status changes have not been implemented yet.
 
 ## Technology stack
 
@@ -170,7 +170,27 @@ than two fractional digits, and cannot exceed the current balance. An inactive a
 insufficient funds produces `409 Conflict`; insufficient-funds responses do not expose the
 current balance. Balance reduction and the `WITHDRAWAL` transaction are committed atomically.
 The same PostgreSQL pessimistic row lock used by deposits prevents concurrent withdrawals from
-creating a negative balance. Transfers and transaction history are not implemented yet.
+creating a negative balance.
+
+Transfer money between two active accounts of the same currency:
+
+```http
+POST /api/v1/transfers
+Content-Type: application/json
+
+{
+  "sourceAccountId": "11111111-1111-1111-1111-111111111111",
+  "targetAccountId": "22222222-2222-2222-2222-222222222222",
+  "amount": 500.00,
+  "description": "Transfer between accounts"
+}
+```
+
+Successful response: `201 Created`, with
+`Location: /api/v1/transactions/{transactionId}`. Source and target accounts must be different,
+active, and use the same currency. Both account rows are locked in stable UUID order to avoid
+deadlocks. Both balance changes and the single `TRANSFER` record are committed atomically.
+Currency conversion and transaction history are not implemented yet.
 
 ## Tests
 

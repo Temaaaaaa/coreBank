@@ -120,7 +120,10 @@ public class GlobalExceptionHandler {
     }
 
     private boolean isConflict(String errorCode) {
-        return "ACCOUNT_NOT_ACTIVE".equals(errorCode) || "INSUFFICIENT_FUNDS".equals(errorCode);
+        return "ACCOUNT_NOT_ACTIVE".equals(errorCode)
+                || "INSUFFICIENT_FUNDS".equals(errorCode)
+                || "SAME_ACCOUNT_TRANSFER".equals(errorCode)
+                || "CURRENCY_MISMATCH".equals(errorCode);
     }
 
     @ExceptionHandler(InternalOperationException.class)

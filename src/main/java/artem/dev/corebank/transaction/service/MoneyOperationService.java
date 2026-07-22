@@ -1,11 +1,13 @@
 package artem.dev.corebank.transaction.service;
 
 import artem.dev.corebank.account.entity.AccountEntity;
+import artem.dev.corebank.account.entity.AccountStatus;
 import artem.dev.corebank.account.repository.AccountRepository;
 import artem.dev.corebank.common.exception.BusinessRuleException;
 import artem.dev.corebank.common.exception.ResourceNotFoundException;
 import artem.dev.corebank.transaction.dto.DepositRequest;
 import artem.dev.corebank.transaction.dto.TransactionResponse;
+import artem.dev.corebank.transaction.dto.TransferRequest;
 import artem.dev.corebank.transaction.dto.WithdrawalRequest;
 import artem.dev.corebank.transaction.entity.AccountTransactionEntity;
 import artem.dev.corebank.transaction.mapper.TransactionMapper;
@@ -79,6 +81,64 @@ public class MoneyOperationService {
         return transactionMapper.toResponse(savedTransaction);
     }
 
+    @Transactional
+    public TransactionResponse transfer(TransferRequest request) {
+        UUID sourceAccountId = request.sourceAccountId();
+        UUID targetAccountId = request.targetAccountId();
+        validateDifferentAccounts(sourceAccountId, targetAccountId);
+        BigDecimal amount = validateAmount(request.amount());
+        String description = normalizeDescription(request.description());
+
+        LockedAccounts accounts = lockAccountsInStableOrder(sourceAccountId, targetAccountId);
+        validateTransferAccounts(accounts.source(), accounts.target());
+
+        Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        accounts.source().withdraw(amount, now);
+        accounts.target().deposit(amount, now);
+        AccountTransactionEntity transaction = AccountTransactionEntity.transfer(
+                UUID.randomUUID(),
+                amount,
+                accounts.source(),
+                accounts.target(),
+                description,
+                now
+        );
+        AccountTransactionEntity savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toResponse(savedTransaction);
+    }
+
+    private void validateDifferentAccounts(UUID sourceAccountId, UUID targetAccountId) {
+        if (sourceAccountId != null && sourceAccountId.equals(targetAccountId)) {
+            throw new BusinessRuleException(
+                    "SAME_ACCOUNT_TRANSFER",
+                    "Source and target accounts must be different"
+            );
+        }
+    }
+
+    private LockedAccounts lockAccountsInStableOrder(UUID sourceAccountId, UUID targetAccountId) {
+        UUID firstId = sourceAccountId.compareTo(targetAccountId) < 0 ? sourceAccountId : targetAccountId;
+        UUID secondId = sourceAccountId.compareTo(targetAccountId) < 0 ? targetAccountId : sourceAccountId;
+        AccountEntity firstAccount = findAccountForUpdate(firstId);
+        AccountEntity secondAccount = findAccountForUpdate(secondId);
+        if (sourceAccountId.equals(firstId)) {
+            return new LockedAccounts(firstAccount, secondAccount);
+        }
+        return new LockedAccounts(secondAccount, firstAccount);
+    }
+
+    private void validateTransferAccounts(AccountEntity sourceAccount, AccountEntity targetAccount) {
+        if (sourceAccount.getStatus() != AccountStatus.ACTIVE || targetAccount.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessRuleException("ACCOUNT_NOT_ACTIVE", "Account must be active");
+        }
+        if (sourceAccount.getCurrency() != targetAccount.getCurrency()) {
+            throw new BusinessRuleException(
+                    "CURRENCY_MISMATCH",
+                    "Source and target accounts must use the same currency"
+            );
+        }
+    }
+
     private AccountEntity findAccountForUpdate(UUID accountId) {
         return accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -115,5 +175,8 @@ public class MoneyOperationService {
             throw new BusinessRuleException("INVALID_REQUEST", "Description is too long");
         }
         return normalized;
+    }
+
+    private record LockedAccounts(AccountEntity source, AccountEntity target) {
     }
 }
