@@ -143,7 +143,7 @@ Content-Type: application/json
 
 Successful response: `201 Created`, with
 `Location: /api/v1/transactions/{transactionId}`. The response describes the successful
-deposit transaction. The transaction retrieval endpoint itself belongs to a later stage.
+deposit transaction.
 
 Deposit amounts must be positive and have at most two decimal places; values are never
 silently rounded. Deposits are allowed only for `ACTIVE` accounts, and the transaction currency
@@ -191,6 +191,15 @@ Successful response: `201 Created`, with
 active, and use the same currency. Both account rows are locked in stable UUID order to avoid
 deadlocks. Both balance changes and the single `TRANSFER` record are committed atomically.
 Currency conversion and transaction history are not implemented yet.
+
+Retrieve one successful transaction:
+
+```http
+GET /api/v1/transactions/{transactionId}
+```
+
+Successful response: `200 OK`. If the transaction does not exist, the API returns `404 Not Found`
+with error code `TRANSACTION_NOT_FOUND`.
 
 ## Tests
 

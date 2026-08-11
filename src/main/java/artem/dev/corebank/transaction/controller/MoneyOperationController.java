@@ -7,6 +7,7 @@ import artem.dev.corebank.transaction.dto.WithdrawalRequest;
 import artem.dev.corebank.transaction.service.MoneyOperationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,5 +50,10 @@ public class MoneyOperationController {
         TransactionResponse response = moneyOperationService.transfer(request);
         URI location = URI.create("/api/v1/transactions/" + response.id());
         return ResponseEntity.created(location).body(response);
+    }
+
+    @GetMapping("/api/v1/transactions/{transactionId}")
+    public ResponseEntity<TransactionResponse> getTransaction(@PathVariable UUID transactionId) {
+        return ResponseEntity.ok(moneyOperationService.getTransactionById(transactionId));
     }
 }

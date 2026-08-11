@@ -107,6 +107,16 @@ public class MoneyOperationService {
         return transactionMapper.toResponse(savedTransaction);
     }
 
+    @Transactional(readOnly = true)
+    public TransactionResponse getTransactionById(UUID transactionId) {
+        AccountTransactionEntity transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "TRANSACTION_NOT_FOUND",
+                        "Transaction with id " + transactionId + " was not found"
+                ));
+        return transactionMapper.toResponse(transaction);
+    }
+
     private void validateDifferentAccounts(UUID sourceAccountId, UUID targetAccountId) {
         if (sourceAccountId != null && sourceAccountId.equals(targetAccountId)) {
             throw new BusinessRuleException(
