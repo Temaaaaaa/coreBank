@@ -1,6 +1,8 @@
 package artem.dev.corebank.transaction.controller;
 
 import artem.dev.corebank.transaction.dto.DepositRequest;
+import artem.dev.corebank.transaction.dto.TransactionHistoryRequest;
+import artem.dev.corebank.transaction.dto.TransactionPageResponse;
 import artem.dev.corebank.transaction.dto.TransactionResponse;
 import artem.dev.corebank.transaction.dto.TransferRequest;
 import artem.dev.corebank.transaction.dto.WithdrawalRequest;
@@ -11,7 +13,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.MultiValueMap;
 
 import java.net.URI;
 import java.util.UUID;
@@ -55,5 +59,14 @@ public class MoneyOperationController {
     @GetMapping("/api/v1/transactions/{transactionId}")
     public ResponseEntity<TransactionResponse> getTransaction(@PathVariable UUID transactionId) {
         return ResponseEntity.ok(moneyOperationService.getTransactionById(transactionId));
+    }
+
+    @GetMapping("/api/v1/accounts/{accountId}/transactions")
+    public TransactionPageResponse getAccountTransactions(
+            @PathVariable UUID accountId,
+            @RequestParam MultiValueMap<String, String> queryParameters
+    ) {
+        TransactionHistoryRequest request = TransactionHistoryRequest.from(queryParameters);
+        return moneyOperationService.getAccountTransactions(accountId, request);
     }
 }

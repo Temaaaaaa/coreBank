@@ -3,8 +3,8 @@
 CoreBank Lite is an educational banking REST API intended to demonstrate clear,
 production-style backend development suitable for a Junior Java developer portfolio.
 
-The current version supports customers, bank accounts, deposits, withdrawals, and transfers.
-Transaction history and account status changes have not been implemented yet.
+The current version supports customers, bank accounts, deposits, withdrawals, transfers,
+and paginated transaction history. Account status changes have not been implemented yet.
 
 ## Technology stack
 
@@ -190,7 +190,7 @@ Successful response: `201 Created`, with
 `Location: /api/v1/transactions/{transactionId}`. Source and target accounts must be different,
 active, and use the same currency. Both account rows are locked in stable UUID order to avoid
 deadlocks. Both balance changes and the single `TRANSFER` record are committed atomically.
-Currency conversion and transaction history are not implemented yet.
+Currency conversion is not implemented.
 
 Retrieve one successful transaction:
 
@@ -200,6 +200,21 @@ GET /api/v1/transactions/{transactionId}
 
 Successful response: `200 OK`. If the transaction does not exist, the API returns `404 Not Found`
 with error code `TRANSACTION_NOT_FOUND`.
+
+Retrieve the transaction history of an account:
+
+```http
+GET /api/v1/accounts/{accountId}/transactions?type=TRANSFER&from=2026-08-01T00:00:00Z&to=2026-08-31T23:59:59Z&page=0&size=20&sort=createdAt,desc
+```
+
+The response contains `content`, `page`, `size`, `totalElements`, and `totalPages`. Transactions
+are included when the account is either their source or target. The optional `type` filter accepts
+`DEPOSIT`, `WITHDRAWAL`, or `TRANSFER`; `from` and `to` are inclusive ISO-8601 instants.
+
+Pagination defaults to `page=0` and `size=20`; `size` must be between 1 and 100. Sorting defaults
+to `createdAt DESC` and supports only `sort=createdAt,asc` or `sort=createdAt,desc`. Transaction ID
+is always used as a secondary sort key in the same direction to keep page ordering stable. Unknown
+query parameters and invalid filter, pagination, or sorting values return `400 Bad Request`.
 
 ## Tests
 

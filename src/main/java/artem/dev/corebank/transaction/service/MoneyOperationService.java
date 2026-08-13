@@ -6,6 +6,8 @@ import artem.dev.corebank.account.repository.AccountRepository;
 import artem.dev.corebank.common.exception.BusinessRuleException;
 import artem.dev.corebank.common.exception.ResourceNotFoundException;
 import artem.dev.corebank.transaction.dto.DepositRequest;
+import artem.dev.corebank.transaction.dto.TransactionHistoryRequest;
+import artem.dev.corebank.transaction.dto.TransactionPageResponse;
 import artem.dev.corebank.transaction.dto.TransactionResponse;
 import artem.dev.corebank.transaction.dto.TransferRequest;
 import artem.dev.corebank.transaction.dto.WithdrawalRequest;
@@ -14,11 +16,16 @@ import artem.dev.corebank.transaction.mapper.TransactionMapper;
 import artem.dev.corebank.transaction.repository.AccountTransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -115,6 +122,40 @@ public class MoneyOperationService {
                         "Transaction with id " + transactionId + " was not found"
                 ));
         return transactionMapper.toResponse(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionPageResponse getAccountTransactions(
+            UUID accountId,
+            TransactionHistoryRequest request
+    ) {
+        if (!accountRepository.existsById(accountId)) {
+            throw new ResourceNotFoundException(
+                    "ACCOUNT_NOT_FOUND",
+                    "Account with id " + accountId + " was not found"
+            );
+        }
+
+        Sort sort = Sort.by(request.sortDirection(), "createdAt")
+                .and(Sort.by(request.sortDirection(), "id"));
+        Pageable pageable = PageRequest.of(request.page(), request.size(), sort);
+        Page<AccountTransactionEntity> transactionPage = transactionRepository.findAccountHistory(
+                accountId,
+                request.type(),
+                request.from(),
+                request.to(),
+                pageable
+        );
+        List<TransactionResponse> content = transactionPage.getContent().stream()
+                .map(transactionMapper::toResponse)
+                .toList();
+        return new TransactionPageResponse(
+                content,
+                transactionPage.getNumber(),
+                transactionPage.getSize(),
+                transactionPage.getTotalElements(),
+                transactionPage.getTotalPages()
+        );
     }
 
     private void validateDifferentAccounts(UUID sourceAccountId, UUID targetAccountId) {
